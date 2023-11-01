@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import PhotoImage
+from tkinter import PhotoImage, filedialog
 
 def show_proses_klasifikasi(content_frame):
     # Hapus konten saat ini
@@ -14,7 +14,13 @@ def show_proses_klasifikasi(content_frame):
     image_frame = tk.Frame(content_frame)
     image_frame.pack()
 
+    # Definisi tombol Segmentation dan Classification
+    segmentation_button = None
+    classification_button = None
+
     def create_image_label_button(image_path, label_text, row, column):
+        nonlocal segmentation_button, classification_button
+
         # Gambar
         image = PhotoImage(file=image_path)
         image = image.subsample(2)
@@ -30,13 +36,32 @@ def show_proses_klasifikasi(content_frame):
         # Tombol
         if label_text.cget("text") == "Gambar Input":
             button_text = "Import Image"
+            button = tk.Button(image_frame, text=button_text, command=lambda: import_image(label, label_text))
+            button.grid(row=row + 2, column=column, padx=10, pady=10, sticky="nsew")
         elif label_text.cget("text") == "Gambar Segmentasi":
             button_text = "Segmentation Image"
+            segmentation_button = tk.Button(image_frame, text=button_text, command=lambda: button_click(label_text), state=tk.DISABLED)
+            segmentation_button.grid(row=row + 2, column=column, padx=10, pady=10, sticky="nsew")
         elif label_text.cget("text") == "Gambar Klasifikasi":
             button_text = "Classification Image"
+            classification_button = tk.Button(image_frame, text=button_text, command=lambda: button_click(label_text), state=tk.DISABLED)
+            classification_button.grid(row=row + 2, column=column, padx=10, pady=10, sticky="nsew")
 
-        button = tk.Button(image_frame, text=button_text, command=lambda: button_click(label_text))
-        button.grid(row=row + 2, column=column, padx=10, pady=10, sticky="nsew")
+    def import_image(label, label_text):
+        nonlocal segmentation_button, classification_button
+        file_path = filedialog.askopenfilename(title="Pilih Gambar", filetypes=[("Image files", "*.png *.jpg *.jpeg *.gif *.bmp")])
+        if file_path:
+            # Ganti gambar "Gambar Input" dengan gambar yang dipilih
+            image = PhotoImage(file=file_path)
+            image = image.subsample(2)
+            label.configure(image=image)
+            label.image = image
+            label_text.configure(text="Gambar Input (Terpilih)")
+
+            # Aktifkan tombol Segmentation dan Classification
+            if segmentation_button and classification_button:
+                segmentation_button.configure(state=tk.NORMAL)
+                classification_button.configure(state=tk.NORMAL)
 
     # Gambar pertama
     create_image_label_button("images/gambar.png", "Gambar Input", 0, 0)
@@ -49,5 +74,3 @@ def show_proses_klasifikasi(content_frame):
 
     def button_click(label_text):
         print(f"Tombol ditekan untuk: {label_text.cget('text')}")
-
-    # Anda dapat menyesuaikan path file gambar dan teks label sesuai kebutuhan Anda.

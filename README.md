@@ -71,6 +71,7 @@ source myenv/bin/activate
 ```
 
 ## Langkah 2: Menjalankan Skrip
+
 Sekarang Anda siap untuk menjalankan skrip run.py. Gunakan perintah berikut untuk menjalankannya:
 
 ```bash
@@ -94,6 +95,7 @@ cd path/ke/github/skripsi-ade
 ```
 
 ## Langkah 2: Sinkronisasi dengan Repository GitHub
+
 Gunakan perintah berikut untuk mengambil perubahan terbaru dari repository GitHub dan memperbarui repository lokal Anda:
 
 ```bash
@@ -109,4 +111,3 @@ Jika Anda menghadapi konflik selama proses git pull, Anda perlu mengatasi konfli
 ## Langkah 4: Selesaikan Pembaruan
 
 Setelah pembaruan selesai, repository lokal Anda akan diperbarui dengan perubahan terbaru dari GitHub.
-

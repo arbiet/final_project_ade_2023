@@ -54,7 +54,7 @@ X = np.array(images).reshape(len(images), -1)
 y = np.array(labels)
 
 # Membagi data pelatihan menjadi data pelatihan dan validasi
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.4, random_state=42)
 
 # Membuat dan melatih model SVM
 svm_model = svm.SVC(kernel='linear', C=1)

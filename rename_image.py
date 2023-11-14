@@ -36,7 +36,7 @@ def rename_and_resize_files(folder_path):
         # Pengecekan apakah file adalah gambar
         if is_image_file(file_name):
             # Membuat nama baru "gambar_nomorurut"
-            new_name = f"matang_{i + 1}{os.path.splitext(file_name)[1]}"
+            new_name = f"kering_{i + 1}{os.path.splitext(file_name)[1]}"
 
             # Menggabungkan path file lama dan baru
             old_path = os.path.join(folder_path, file_name)
@@ -47,7 +47,7 @@ def rename_and_resize_files(folder_path):
                 # Jika file baru sudah ada, tambahkan angka unik di belakang nama file
                 while os.path.exists(new_path):
                     i += 1
-                    new_name = f"matang_{i + 1}{os.path.splitext(file_name)[1]}"
+                    new_name = f"kering_{i + 1}{os.path.splitext(file_name)[1]}"
                     new_path = os.path.join(folder_path, new_name)
 
                 os.rename(old_path, new_path)
@@ -60,7 +60,7 @@ def rename_and_resize_files(folder_path):
 
 if __name__ == "__main__":
     # Ganti path_folder dengan path folder tempat file-file Anda berada
-    path_folder = "matang"
+    path_folder = "kering"
 
     # Memanggil fungsi rename_and_resize_files untuk semua file di dalam folder
     rename_and_resize_files(path_folder)

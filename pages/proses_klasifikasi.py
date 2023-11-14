@@ -3,7 +3,21 @@ from tkinter import PhotoImage, filedialog
 from PIL import Image, ImageTk
 import cv2
 import numpy as np
-import os  # Untuk manajemen file dan folder
+import os
+from sklearn import svm
+import joblib
+
+# Load the trained SVM model
+model_filename = "pages/svm_model.joblib"
+svm_model = None
+if os.path.isfile(model_filename):
+    try:
+        svm_model = joblib.load(model_filename)
+        print("SVM model loaded successfully.")
+    except Exception as e:
+        print(f"Error loading SVM model: {e}")
+else:
+    print(f"SVM model file ('{model_filename}') not found.")
 
 def show_proses_klasifikasi(content_frame):
     # Hapus konten saat ini
@@ -21,6 +35,7 @@ def show_proses_klasifikasi(content_frame):
     # Definisi tombol Segmentation dan Classification
     segmentation_button = None
     classification_button = None
+    import_button = None
 
     # Path gambar terpilih
     selected_image_path = None
@@ -34,7 +49,7 @@ def show_proses_klasifikasi(content_frame):
     os.makedirs(temp_folder, exist_ok=True)  # Buat folder jika belum ada
 
     def create_image_label_button(image_path, label_text, row, column):
-        nonlocal segmentation_button, classification_button
+        nonlocal segmentation_button, classification_button, import_button
 
         # Gambar
         pil_image = Image.open(image_path)
@@ -51,18 +66,18 @@ def show_proses_klasifikasi(content_frame):
         # Tombol
         if label_text == "Gambar Input":
             button_text = "Import Image"
-            import_button = tk.Button(image_frame, text=button_text, command=lambda: import_image(image_label, label, segmentation_button, classification_button))
+            import_button = tk.Button(image_frame, text=button_text, command=lambda: import_image(image_label, label, segmentation_button, import_button))
             import_button.grid(row=row + 2, column=column, padx=10, pady=10, sticky="nsew")
         elif label_text == "Gambar Segmentasi":
             button_text = "Segmentation Image"
-            segmentation_button = tk.Button(image_frame, text=button_text, command=lambda: segmentation_image(image_label, label), state=tk.DISABLED)
+            segmentation_button = tk.Button(image_frame, text=button_text, command=lambda: segmentation_image(image_label, label, classification_button), state=tk.DISABLED)
             segmentation_button.grid(row=row + 2, column=column, padx=10, pady=10, sticky="nsew")
         elif label_text == "Gambar Klasifikasi":
             button_text = "Classification Image"
-            classification_button = tk.Button(image_frame, text=button_text, command=lambda: button_click(label), state=tk.DISABLED)
+            classification_button = tk.Button(image_frame, text=button_text, command=lambda: classification_image(image_label, label, import_button), state=tk.DISABLED)
             classification_button.grid(row=row + 2, column=column, padx=10, pady=10, sticky="nsew")
 
-    def import_image(image_label, label, segmentation_button, classification_button):
+    def import_image(image_label, label, segmentation_button, import_button):
         nonlocal selected_image_path
         file_path = filedialog.askopenfilename(title="Pilih Gambar", filetypes=[("Image files", "*.png *.jpg *.jpeg *.gif *.bmp")])
         if file_path:
@@ -82,12 +97,13 @@ def show_proses_klasifikasi(content_frame):
             label.configure(text=f"Gambar Input (Terpilih)\nWidth: {image_width}, Height: {image_height}")
 
             # Aktifkan tombol Segmentation dan Classification
-            if segmentation_button and classification_button:
+            if segmentation_button:
+                import_button.configure(state=tk.DISABLED)
                 segmentation_button.configure(state=tk.NORMAL)
-                classification_button.configure(state=tk.NORMAL)
 
-    def segmentation_image(image_label, label):
+    def segmentation_image(image_label, label, classification_button):
         if selected_image_path:
+            
             # Buka gambar terpilih
             pil_image = Image.open(selected_image_path)
 
@@ -113,6 +129,62 @@ def show_proses_klasifikasi(content_frame):
             description = f"Gambar Segmentasi\n(Metode: Adaptive Thresholding)"
             label.configure(text=description, font=("Arial", 9))
 
+            # Aktifkan tombol Segmentation dan Classification
+            if classification_button:
+                segmentation_button.configure(state=tk.DISABLED)
+                classification_button.configure(state=tk.NORMAL)
+
+    def classification_image(image_label, label, import_button):
+        global svm_model
+        print("Classification function called.")
+        if selected_image_path and svm_model:
+            # Buka gambar terpilih
+            pil_image = Image.open(selected_image_path)
+
+            # Resize gambar ke ukuran yang diinginkan
+            pil_image_resized = pil_image.resize((128, 128))
+
+            # Konversi gambar ke array NumPy
+            open_cv_image = np.array(pil_image_resized)
+            open_cv_image = cv2.cvtColor(open_cv_image, cv2.COLOR_RGB2BGR)
+            flat_image = open_cv_image.flatten()
+
+            try:
+                # Resize flat_image to match the expected size used during training
+                # Replace 16384 with the actual size expected by your SVM model
+                flat_image = flat_image.reshape(-1, 16384)
+
+                # Lakukan klasifikasi menggunakan SVM model
+                prediction = svm_model.predict(flat_image)
+                class_label = get_class_label(prediction[0])
+
+                # Tampilkan gambar hasil klasifikasi pada "Gambar Klasifikasi"
+                tk_classification_image = ImageTk.PhotoImage(pil_image_resized)
+                image_label.configure(image=tk_classification_image)
+                image_label.image = tk_classification_image
+
+                # Deskripsi tambahan
+                description = f"Gambar Klasifikasi\n(Klasifikasi: {class_label})"
+                label.configure(text=description, font=("Arial", 9))
+                if import_button:
+                    import_button.configure(state=tk.NORMAL)
+                    segmentation_button.configure(state=tk.NORMAL)
+                    classification_button.configure(state=tk.DISABLED)
+
+            except Exception as e:
+                print(f"Error during classification: {e}")
+        else:
+            print("Image path or SVM model is not available.")
+
+    def get_class_label(prediction):
+        # Map numeric class label to a human-readable label
+        class_labels = {
+            0: "Matang",
+            1: "Busuk",
+            2: "Kehijauan",
+            3: "Kering",
+        }
+        return class_labels.get(prediction, "Unknown")
 
     # Gambar pertama
     create_image_label_button("images/gambar.png", "Gambar Input", 0, 0)

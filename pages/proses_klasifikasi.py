@@ -7,18 +7,6 @@ import os
 from sklearn import svm
 import joblib
 
-# Load the trained SVM model
-model_filename = "pages/svm_model.joblib"
-svm_model = None
-if os.path.isfile(model_filename):
-    try:
-        svm_model = joblib.load(model_filename)
-        print("SVM model loaded successfully.")
-    except Exception as e:
-        print(f"Error loading SVM model: {e}")
-else:
-    print(f"SVM model file ('{model_filename}') not found.")
-
 def show_proses_klasifikasi(content_frame):
     # Hapus konten saat ini
     for widget in content_frame.winfo_children():
@@ -135,8 +123,18 @@ def show_proses_klasifikasi(content_frame):
                 classification_button.configure(state=tk.NORMAL)
 
     def classification_image(image_label, label, import_button):
-        global svm_model
-        print("Classification function called.")
+        # Load the trained SVM model
+        model_filename = "pages/svm_model.joblib"
+        svm_model = None
+        if os.path.isfile(model_filename):
+            try:
+                svm_model = joblib.load(model_filename)
+                print("SVM model loaded successfully.")
+            except Exception as e:
+                print(f"Error loading SVM model: {e}")
+        else:
+            print(f"SVM model file ('{model_filename}') not found.")
+            
         if selected_image_path and svm_model:
             # Buka gambar terpilih
             pil_image = Image.open(selected_image_path)

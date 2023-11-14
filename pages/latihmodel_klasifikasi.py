@@ -6,6 +6,7 @@ import numpy as np
 from sklearn import svm
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
+from sklearn.preprocessing import StandardScaler  # Import StandardScaler for feature scaling
 import joblib
 
 def load_images(folder_path, label, image_size=(128, 128)):
@@ -71,6 +72,14 @@ def train_svm_model(progress_var, label_result):
     # Convert to NumPy arrays
     X = np.array(images).reshape(len(images), -1)
     y = np.array(labels)
+
+    # Convert to NumPy arrays
+    X = np.array(images).reshape(len(images), -1)
+    y = np.array(labels)
+
+    # Scale the input features using StandardScaler
+    scaler = StandardScaler()
+    X = scaler.fit_transform(X)
 
     # Split the training data
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.4, random_state=42)

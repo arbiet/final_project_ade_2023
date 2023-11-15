@@ -8,8 +8,12 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import StandardScaler  # Import StandardScaler for feature scaling
 import joblib
+from PIL import Image
 
-def load_images(folder_path, label, image_size=(128, 128)):
+# Add a global variable to store file names and their classification results
+file_results = []
+
+def load_images(folder_path, label, image_size=(500, 500), apply_noise_reduction=True):
     images = []
     labels = []
 
@@ -18,121 +22,144 @@ def load_images(folder_path, label, image_size=(128, 128)):
             image_path = os.path.join(folder_path, image_name)
 
             # Attempt to read the image
-            image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+            original_image = Image.open(image_path)
+            pil_image = Image.open(image_path)
 
-            if image is not None:
-                # Resize the image
-                image = cv2.resize(image, image_size)
+            # Consider processing the image with blurring or other processing techniques
+            processed_image = cv2.GaussianBlur(np.array(pil_image), (5, 5), 0)
 
-                # Apply adaptive threshold
-                segmented_image = cv2.adaptiveThreshold(image, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 11, 2)
+            # Perform segmentation using Canny Edge Detection
+            open_cv_image = np.array(processed_image)
+            open_cv_image = cv2.cvtColor(open_cv_image, cv2.COLOR_RGB2BGR)
+            gray = cv2.cvtColor(open_cv_image, cv2.COLOR_BGR2GRAY)
 
-                images.append(segmented_image)
-                labels.append(label)
-            else:
-                print(f"Warning: Unable to read image '{image_path}'.")
+            # Consider morphological processing (dilation and erosion)
+            kernel = np.ones((5, 5), np.uint8)
+            gray = cv2.dilate(gray, kernel, iterations=1)
+            gray = cv2.erode(gray, kernel, iterations=1)
+
+            # Detect edges using the Canny operator
+            lower_threshold = 30
+            upper_threshold = 100
+            edges = cv2.Canny(gray, lower_threshold, upper_threshold)
+
+            # Example: Apply Hough Transform to detect straight lines
+            lines = cv2.HoughLines(edges, 1, np.pi / 180, threshold=50)
+
+            # If you want to combine the detected lines, you can add a merging process here
+            kernel_line = np.ones((5, 5), np.uint8)
+            dilated_lines = cv2.dilate(edges, kernel_line, iterations=1)
+            closed_lines = cv2.morphologyEx(dilated_lines, cv2.MORPH_CLOSE, kernel_line, iterations=2)
+
+            # Resize the segmented image after line joining
+            resized_segmented_image = cv2.resize(closed_lines, image_size)
+
+            # Apply noise reduction (Gaussian blur)
+            if apply_noise_reduction:
+                resized_segmented_image = cv2.GaussianBlur(resized_segmented_image, (3, 3), 0)
+
+            # Invert the segmented image
+            inverted_segmented_image = cv2.bitwise_not(resized_segmented_image)
+
+            # Append the inverted segmented image to the list
+            images.append(inverted_segmented_image)
+            labels.append(label)
+
+        return images, labels
 
     except Exception as e:
         print(f"Error loading images from '{folder_path}': {e}")
 
-    return images, labels
-
 def train_svm_model(progress_var, label_result):
+    global file_results  # Use a global variable to store file names and their results
     # Function to train the SVM model
     # Adjust the paths based on your project structure
     folder_matang = "images/classification/matang"
-    # folder_bersemu = "images/classification/bersemu"
-    # folder_berjamur = "images/classification/berjamur"
     folder_busuk = "images/classification/busuk"
     folder_kehijauan = "images/classification/kehijauan"
-    # folder_luka = "images/classification/luka"
     folder_kering = "images/classification/kering"
+    folder_test = "images/classification/test"
 
-    # Load images from different folders
-    matang_images, matang_labels = load_images(folder_matang, 0)
-    busuk_images, busuk_labels = load_images(folder_busuk, 1)
-    kehijauan_images, kehijauan_labels = load_images(folder_kehijauan, 2)
-    kering_images, kering_labels = load_images(folder_kering, 3)
-    # berjamur_images, berjamur_labels = load_images(folder_berjamur, 2)
-    # bersemu_images, bersemu_labels = load_images(folder_bersemu, 1)
-    # luka_images, luka_labels = load_images(folder_luka, 5)
+    # Load training images from different folders
+    matang_images, matang_labels = load_images(folder_matang, 0, apply_noise_reduction=True)
+    busuk_images, busuk_labels = load_images(folder_busuk, 1, apply_noise_reduction=True)
+    kehijauan_images, kehijauan_labels = load_images(folder_kehijauan, 2, apply_noise_reduction=True)
+    kering_images, kering_labels = load_images(folder_kering, 3, apply_noise_reduction=True)
 
-    # Combine all data
-    # images = matang_images + bersemu_images + berjamur_images + busuk_images + kehijauan_images + luka_images + kering_images
-    # labels = matang_labels + bersemu_labels + berjamur_labels + busuk_labels + kehijauan_labels + luka_labels + kering_images
 
-    # Combine all data
-    images = matang_images + busuk_images + kehijauan_images + kering_images
-    labels = matang_labels + busuk_labels + kehijauan_labels + kering_labels
+    # Combine all data for training
+    images = np.vstack((matang_images, busuk_images, kehijauan_images, kering_images))
+    labels = np.hstack((matang_labels, busuk_labels, kehijauan_labels, kering_labels))
 
-    if not images:
-        label_result.config(text="No images loaded. Please check the image paths.")
-        return
+    # Define class names
+    class_names = {
+        0: 'Matang',
+        1: 'Busuk',
+        2: 'Kehijauan',
+        3: 'Kering'
+    }
 
-    # Convert to NumPy arrays
-    X = np.array(images).reshape(len(images), -1)
-    y = np.array(labels)
+    # Split the data into training and testing sets
+    X_train, X_test, y_train, y_test = train_test_split(images, labels, test_size=0.25, random_state=42)
 
-    # Convert to NumPy arrays
-    X = np.array(images).reshape(len(images), -1)
-    y = np.array(labels)
+    # Preprocess the data: Flatten images and scale features
+    X_train_flat = X_train.reshape(X_train.shape[0], -1)
+    X_test_flat = X_test.reshape(X_test.shape[0], -1)
 
-    # Scale the input features using StandardScaler
     scaler = StandardScaler()
-    X = scaler.fit_transform(X)
-
-    # Split the training data
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.4, random_state=42)
+    X_train_scaled = scaler.fit_transform(X_train_flat)
+    X_test_scaled = scaler.transform(X_test_flat)
 
     # Create and train the SVM model
-    svm_model = svm.SVC(kernel='linear', C=1)
-    svm_model.fit(X_train, y_train)
+    model = svm.SVC(kernel='poly', C=1.0, probability=True, gamma="auto")
+    model.fit(X_train_scaled, y_train)
 
-    # Test the model on validation data
-    y_pred = svm_model.predict(X_test)
+    # Save the model along with class names
+    joblib.dump((model, scaler, class_names), 'pages/svm_model.joblib')
 
-    # Create a list to store accuracy for each file
-    file_accuracies = []
+    # Make predictions on the test set
+    y_pred_test = model.predict(X_test_scaled)
 
-    for i, (true_label, predicted_label) in enumerate(zip(y_test, y_pred)):
-        file_accuracy = 1 if true_label == predicted_label else 0
-        file_accuracies.append(file_accuracy)
-        print(f"File {i+1}: Accuracy: {file_accuracy}")
+    # Calculate accuracy on the test set
+    accuracy_test = accuracy_score(y_test, y_pred_test)
 
-    # Calculate overall accuracy
-    overall_accuracy = sum(file_accuracies) / len(file_accuracies)
+    # Load test images
+    test_images, test_labels = load_images(folder_test, None, apply_noise_reduction=True)  # None as label, as it's for testing
 
-    # Print model accuracy
-    accuracy_message = f"Overall Accuracy: {overall_accuracy}"
-    print(accuracy_message)
+    # Preprocess test data
+    test_images_flat = np.array(test_images).reshape(len(test_images), -1)
+    test_images_scaled = scaler.transform(test_images_flat)
 
-    # Save the model if overall accuracy is above a certain threshold
-    model_filename = "svm_model.joblib"
-    script_directory = os.path.dirname(__file__)
-    model_path = os.path.join(script_directory, model_filename)
+    # Make predictions on the test images
+    y_pred_test_images = model.predict(test_images_scaled)
 
-    # Delete existing model file if it exists
-    if os.path.exists(model_path):
-        os.remove(model_path)
-        print(f"Existing model file '{model_path}' deleted.")
-
-    if overall_accuracy > 0.7:
-        joblib.dump(svm_model, model_path)
-        accuracy_message += f"\nModel SVM saved as {model_path}"
-    else:
-        accuracy_message += "\nModel SVM not saved due to overall accuracy less than 70%"
+    # Display file names and results in the GUI for the test set
+    file_results = list(zip(os.listdir(folder_test), y_pred_test_images))
+    file_result_message = "\nFile Names and Classification Results for Test Set:\n"
+    # for file_name, result in file_results:
+        # file_result_message += f"{file_name}: {class_names[result]}\n"
 
     # Update the label_result text
-    label_result.config(text=accuracy_message)
+    label_result.config(text=f"Training complete. Accuracy on test set: {accuracy_test:.2%}\n" + file_result_message)
 
 def show_latihmodel_klasifikasi(content_frame):
     def train_model_and_display_result():
+        global file_results  # Use the global variable
+
         # Function to train the SVM model and display the result
         progress_var.set(0)  # Reset progress bar
         label_result.config(text="Training is in progress...\n")
         content_frame.update_idletasks()  # Update the content frame
 
         train_svm_model(progress_var, label_result)
+
+        # Display file names and results in the GUI
+        file_result_message = "\nFile Names and Classification Results:\n"
+        # for file_name, result in file_results:
+            # file_result_message += f"{file_name}: ({result})\n"
+
+        # Update the label_result text
+        label_result.config(text=label_result.cget("text") + file_result_message)
 
     label = tk.Label(content_frame, text="Halaman Latih Model Klasifikasi", font=("Arial", 24))
     label.pack(pady=20)
@@ -147,3 +174,4 @@ def show_latihmodel_klasifikasi(content_frame):
 
     label_result = tk.Label(content_frame, text="", font=("Arial", 12), wraplength=400, justify="left")
     label_result.pack(pady=10)
+

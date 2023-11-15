@@ -6,6 +6,7 @@ import numpy as np
 import os
 from sklearn import svm
 import joblib
+from sklearn.preprocessing import StandardScaler
 
 def show_proses_klasifikasi(content_frame):
     # Hapus konten saat ini
@@ -27,6 +28,9 @@ def show_proses_klasifikasi(content_frame):
 
     # Path gambar terpilih
     selected_image_path = None
+
+    # Path untuk gambar hasil segmentasi
+    segmented_image_path = None
 
     # Ukuran gambar yang diinginkan
     image_width = 150
@@ -66,7 +70,12 @@ def show_proses_klasifikasi(content_frame):
             classification_button.grid(row=row + 2, column=column, padx=10, pady=10, sticky="nsew")
 
     def import_image(image_label, label, segmentation_button, import_button):
-        nonlocal selected_image_path
+        nonlocal selected_image_path, segmented_image_path
+
+        # Hapus gambar hasil segmentasi sementara jika ada
+        if segmented_image_path:
+            os.remove(segmented_image_path)
+            segmented_image_path = None
         file_path = filedialog.askopenfilename(title="Pilih Gambar", filetypes=[("Image files", "*.png *.jpg *.jpeg *.gif *.bmp")])
         if file_path:
             # Simpan gambar terpilih sementara di folder "images/temp/"
@@ -90,99 +99,134 @@ def show_proses_klasifikasi(content_frame):
                 segmentation_button.configure(state=tk.NORMAL)
 
     def segmentation_image(image_label, label, classification_button):
+        nonlocal segmented_image_path  # Add this line to indicate the use of the global variable
+
         if selected_image_path:
-            
             # Buka gambar terpilih
+            original_image = Image.open(selected_image_path)
             pil_image = Image.open(selected_image_path)
 
+            # Pertimbangkan untuk memproses citra dengan pengaburan atau teknik pemrosesan lainnya
+            processed_image = cv2.GaussianBlur(np.array(pil_image), (5, 5), 0)
+
             # Lakukan segmentasi gambar menggunakan Adaptive Thresholding
-            open_cv_image = np.array(pil_image)
+            open_cv_image = np.array(processed_image)
             open_cv_image = cv2.cvtColor(open_cv_image, cv2.COLOR_RGB2BGR)
             gray = cv2.cvtColor(open_cv_image, cv2.COLOR_BGR2GRAY)
 
-            # Konfigurasi Adaptive Thresholding
-            block_size = 11
-            constant = 2
+            # Pertimbangkan untuk pemrosesan morfologi (dilasi dan erosi)
+            kernel = np.ones((5, 5), np.uint8)
+            gray = cv2.dilate(gray, kernel, iterations=1)
+            gray = cv2.erode(gray, kernel, iterations=1)
 
-            segmented_image = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, block_size, constant)
+            # Deteksi tepi menggunakan operator Canny
+            # Sesuaikan nilai ambang bawah (lower threshold) dan ambang atas (upper threshold)
+            lower_threshold = 30  # Sesuaikan sesuai kebutuhan
+            upper_threshold = 100  # Sesuaikan sesuai kebutuhan
+            edges = cv2.Canny(gray, lower_threshold, upper_threshold)
 
-            # Tampilkan gambar hasil segmentasi pada "Gambar Segmentasi"
-            pil_segmented_image = Image.fromarray(segmented_image)
-            pil_segmented_image = pil_segmented_image.resize((image_width, image_height))
-            tk_segmented_image = ImageTk.PhotoImage(pil_segmented_image)
-            image_label.configure(image=tk_segmented_image)
-            image_label.image = tk_segmented_image
+            # Sebagai contoh, menerapkan Transformasi Hough untuk mendeteksi garis lurus
+            lines = cv2.HoughLines(edges, 1, np.pi / 180, threshold=50)
 
-            # Deskripsi tambahan
-            description = f"Gambar Segmentasi\n(Metode: Adaptive Thresholding)"
+            # Jika ingin menggabungkan garis yang terdeteksi, bisa ditambahkan proses penggabungan di sini
+            # Gabungkan garis dengan melakukan dilasi dan operasi penutupan (closing)
+            kernel_line = np.ones((5, 5), np.uint8)
+            dilated_lines = cv2.dilate(edges, kernel_line, iterations=1)
+            closed_lines = cv2.morphologyEx(dilated_lines, cv2.MORPH_CLOSE, kernel_line, iterations=2)
+
+            # Resize the segmented image after line joining
+            resized_segmented_image = cv2.resize(closed_lines, (500, 500))
+
+            # Apply noise reduction (Gaussian blur)
+            apply_noise_reduction = True  # Set to True if you want to apply noise reduction
+            if apply_noise_reduction:
+                resized_segmented_image = cv2.GaussianBlur(resized_segmented_image, (3, 3), 0)
+
+            # Invert the segmented image
+            inverted_segmented_image = cv2.bitwise_not(resized_segmented_image)
+
+            # Apply the mask to the original image
+            original_image_array = np.array(original_image)
+            masked_image = cv2.bitwise_and(original_image_array, original_image_array, mask=resized_segmented_image)
+
+            # Save the masked image temporarily
+            masked_filename = f"masked_{os.path.basename(selected_image_path)}"
+            masked_image_path = os.path.join(temp_folder, masked_filename)
+            os.makedirs(os.path.dirname(masked_image_path), exist_ok=True)
+            cv2.imwrite(masked_image_path, masked_image)
+
+            # Display the result
+            pil_masked_image = Image.fromarray(masked_image)
+            pil_masked_image = pil_masked_image.resize((image_width, image_height))
+            tk_masked_image = ImageTk.PhotoImage(pil_masked_image)
+            image_label.configure(image=tk_masked_image)
+            image_label.image = tk_masked_image
+
+            # Set the global variable for the masked image path
+            segmented_image_path = masked_image_path  # Overwriting the segmented image path
+
+            # Additional description
+            description = f"Gambar Segmentasi\n(Metode: Canny Edge Detection + Hough Transform + Gaussian Blur + Inverted)\n" \
+                        f"Masking ke Gambar Asli"
             label.configure(text=description, font=("Arial", 9))
 
-            # Aktifkan tombol Segmentation dan Classification
+            # Activate the Classification button
             if classification_button:
                 segmentation_button.configure(state=tk.DISABLED)
                 classification_button.configure(state=tk.NORMAL)
 
     def classification_image(image_label, label, import_button):
-        # Load the trained SVM model
-        model_filename = "pages/svm_model.joblib"
-        svm_model = None
-        if os.path.isfile(model_filename):
-            try:
-                svm_model = joblib.load(model_filename)
-                print("SVM model loaded successfully.")
-            except Exception as e:
-                print(f"Error loading SVM model: {e}")
-        else:
-            print(f"SVM model file ('{model_filename}') not found.")
-            
-        if selected_image_path and svm_model:
-            # Buka gambar terpilih
-            pil_image = Image.open(selected_image_path)
+        nonlocal segmented_image_path, selected_image_path
 
-            # Resize gambar ke ukuran yang diinginkan
-            pil_image_resized = pil_image.resize((128, 128))
+        if segmented_image_path:
+            print("Classification function called.")
+            # Load the pre-trained SVM model
+            model_path = "pages/svm_model.joblib"
+            if os.path.exists(model_path):
+                model_tuple = joblib.load(model_path)
+                model = model_tuple[0]  # Extract the model from the tuple
+            else:
+                print("Error: SVM model not found.")
+                return
 
-            # Konversi gambar ke array NumPy
-            open_cv_image = np.array(pil_image_resized)
-            open_cv_image = cv2.cvtColor(open_cv_image, cv2.COLOR_RGB2BGR)
-            flat_image = open_cv_image.flatten()
+            # Load the segmented image
+            pil_segmented_image = Image.open(segmented_image_path)
+            segmented_image = np.array(pil_segmented_image)
 
-            try:
-                # Resize flat_image to match the expected size used during training
-                # Replace 16384 with the actual size expected by your SVM model
-                flat_image = flat_image.reshape(-1, 16384)
+            # Check if the image has three channels (RGB)
+            if segmented_image.shape[-1] == 3:
+                # Convert to grayscale
+                gray_segmented = cv2.cvtColor(segmented_image, cv2.COLOR_RGB2GRAY)
+            else:
+                # Image is already single-channel
+                gray_segmented = segmented_image
 
-                # Lakukan klasifikasi menggunakan SVM model
-                prediction = svm_model.predict(flat_image)
-                class_label = get_class_label(prediction[0])
+            # Resize the segmented image
+            resized_segmented_image = cv2.resize(gray_segmented, (500, 500))
 
-                # Tampilkan gambar hasil klasifikasi pada "Gambar Klasifikasi"
-                tk_classification_image = ImageTk.PhotoImage(pil_image_resized)
-                image_label.configure(image=tk_classification_image)
-                image_label.image = tk_classification_image
+            # Flatten the image for classification
+            flattened_image = resized_segmented_image.flatten()
 
-                # Deskripsi tambahan
-                description = f"Gambar Klasifikasi\n(Klasifikasi: {class_label})"
-                label.configure(text=description, font=("Arial", 9))
-                if import_button:
-                    import_button.configure(state=tk.NORMAL)
-                    segmentation_button.configure(state=tk.NORMAL)
-                    classification_button.configure(state=tk.DISABLED)
+            # Scale the features
+            scaler = StandardScaler()
+            scaled_image = scaler.fit_transform(flattened_image.reshape(1, -1))
+            print("Shape of scaled_image:", scaled_image.shape)
 
-            except Exception as e:
-                print(f"Error during classification: {e}")
-        else:
-            print("Image path or SVM model is not available.")
+            # Make a prediction using the SVM model
+            prediction = model.predict(scaled_image)
 
-    def get_class_label(prediction):
-        # Map numeric class label to a human-readable label
-        class_labels = {
-            0: "Matang",
-            1: "Busuk",
-            2: "Kehijauan",
-            3: "Kering",
-        }
-        return class_labels.get(prediction, "Unknown")
+            # Display the result in the label
+            label.configure(text=f"Gambar Klasifikasi\nHasil Klasifikasi: {prediction[0]}")
+
+            # Enable Import Button
+            import_button.configure(state=tk.NORMAL)
+
+            # Display the resized and classified image
+            pil_classified_image = Image.fromarray(resized_segmented_image)
+            pil_classified_image = pil_classified_image.resize((150, 150))
+            tk_classified_image = ImageTk.PhotoImage(pil_classified_image)
+            image_label.configure(image=tk_classified_image)
+            image_label.image = tk_classified_image
 
     # Gambar pertama
     create_image_label_button("images/gambar.png", "Gambar Input", 0, 0)

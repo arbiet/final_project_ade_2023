@@ -153,16 +153,23 @@ def save_image_to_folder(image_path, prediction):
 
     # Define the destination folder based on the predicted label
     destination_folder = f"images/classification/{get_class_name(prediction)}"
+    destination_folder_test = f"images/classification/test"
 
     # Ensure the destination folder exists; create if not
     if not os.path.exists(destination_folder):
         os.makedirs(destination_folder)
+    
+    # Ensure the destination folder exists; create if not
+    if not os.path.exists(destination_folder_test):
+        os.makedirs(destination_folder_test)
 
     # Construct the destination path for the image
     destination_path = os.path.join(destination_folder, new_file_name)
+    destination_folder_test = os.path.join(destination_folder_test, new_file_name)
 
     # Copy the image to the destination folder
     shutil.copy(image_path, destination_path)
+    shutil.copy(image_path, destination_folder_test)
 
     print(f"Image saved to: {destination_path}")
 

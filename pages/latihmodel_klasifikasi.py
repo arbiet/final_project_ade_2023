@@ -158,6 +158,13 @@ def train_svm_model(progress_var, label_result):
     joblib.dump(best_model, model_filename)
     label_result.config(text=label_result.cget("text") + f"\n\nModel SVM telah disimpan sebagai {model_filename}")
 
+    # Menyimpan scaler ke dalam file
+    scaler_filename = "scaler.joblib"
+    joblib.dump(scaler, scaler_filename)
+    label_result.config(text=label_result.cget("text") + f"\n\nScaler telah disimpan sebagai {scaler_filename}")
+
+    # Menyimpan model ke dalam file
+
 def show_latihmodel_klasifikasi(content_frame):
     def train_model_and_display_result():
         global file_results  # Gunakan variabel global

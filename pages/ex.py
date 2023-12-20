@@ -106,64 +106,74 @@ def show_proses_klasifikasi(content_frame):
             original_image = Image.open(selected_image_path)
             pil_image = Image.open(selected_image_path)
 
-            # Konversi gambar PIL ke array numpy
-            original_image_array = np.array(pil_image)
+            # Pertimbangkan untuk memproses citra dengan pengaburan atau teknik pemrosesan lainnya
+            processed_image = cv2.GaussianBlur(np.array(pil_image), (5, 5), 0)
 
-            # Langkah 1: Segmentasi menggunakan deteksi tepi Canny
-            gray_image = cv2.cvtColor(original_image_array, cv2.COLOR_RGB2GRAY)
-            edges = cv2.Canny(gray_image, 50, 150)
+            # Lakukan segmentasi gambar menggunakan Adaptive Thresholding
+            open_cv_image = np.array(processed_image)
+            open_cv_image = cv2.cvtColor(open_cv_image, cv2.COLOR_RGB2BGR)
+            gray = cv2.cvtColor(open_cv_image, cv2.COLOR_BGR2GRAY)
 
-            # Langkah 2: Pertimbangkan pemrosesan morfologi (dilasi dan erosi)
+            # Pertimbangkan untuk pemrosesan morfologi (dilasi dan erosi)
             kernel = np.ones((5, 5), np.uint8)
-            edges = cv2.dilate(edges, kernel, iterations=1)
-            edges = cv2.erode(edges, kernel, iterations=1)
+            gray = cv2.dilate(gray, kernel, iterations=1)
+            gray = cv2.erode(gray, kernel, iterations=1)
 
-            # Langkah 3: Deteksi tepi menggunakan operator Canny
+            # Deteksi tepi menggunakan operator Canny
             # Sesuaikan nilai ambang bawah (lower threshold) dan ambang atas (upper threshold)
             lower_threshold = 30  # Sesuaikan sesuai kebutuhan
             upper_threshold = 100  # Sesuaikan sesuai kebutuhan
-            edges = cv2.Canny(edges, lower_threshold, upper_threshold)
+            edges = cv2.Canny(gray, lower_threshold, upper_threshold)
 
-            # Langkah 4: Gabungkan garis yang terdeteksi dengan dilasi dan operasi penutupan (closing)
+            # Sebagai contoh, menerapkan Transformasi Hough untuk mendeteksi garis lurus
+            lines = cv2.HoughLines(edges, 1, np.pi / 180, threshold=50)
+
+            # Jika ingin menggabungkan garis yang terdeteksi, bisa ditambahkan proses penggabungan di sini
+            # Gabungkan garis dengan melakukan dilasi dan operasi penutupan (closing)
             kernel_line = np.ones((5, 5), np.uint8)
             dilated_lines = cv2.dilate(edges, kernel_line, iterations=1)
             closed_lines = cv2.morphologyEx(dilated_lines, cv2.MORPH_CLOSE, kernel_line, iterations=2)
 
-            # Langkah 5: Resize gambar setelah penggabungan garis
+            # Resize the segmented image after line joining
             resized_segmented_image = cv2.resize(closed_lines, (500, 500))
 
-            # Langkah 6: Invert gambar hasil segmentasi
+            # Apply noise reduction (Gaussian blur)
+            apply_noise_reduction = True  # Set to True if you want to apply noise reduction
+            if apply_noise_reduction:
+                resized_segmented_image = cv2.GaussianBlur(resized_segmented_image, (3, 3), 0)
+
+            # Invert the segmented image
             inverted_segmented_image = cv2.bitwise_not(resized_segmented_image)
 
-            # Langkah 7: Terapkan mask ke gambar asli
+            # Apply the mask to the original image
+            original_image_array = np.array(original_image)
             masked_image = cv2.bitwise_and(original_image_array, original_image_array, mask=resized_segmented_image)
 
-            # Langkah 8: Simpan gambar hasil mask
+            # Save the masked image temporarily
             masked_filename = f"masked_{os.path.basename(selected_image_path)}"
             masked_image_path = os.path.join(temp_folder, masked_filename)
             os.makedirs(os.path.dirname(masked_image_path), exist_ok=True)
             cv2.imwrite(masked_image_path, masked_image)
 
-            # Langkah 9: Tampilkan hasil
+            # Display the result
             pil_masked_image = Image.fromarray(masked_image)
             pil_masked_image = pil_masked_image.resize((image_width, image_height))
             tk_masked_image = ImageTk.PhotoImage(pil_masked_image)
             image_label.configure(image=tk_masked_image)
             image_label.image = tk_masked_image
 
-            # Langkah 10: Set global variable untuk path gambar hasil mask
-            segmented_image_path = masked_image_path  # Menimpa path gambar hasil segmentasi
+            # Set the global variable for the masked image path
+            segmented_image_path = masked_image_path  # Overwriting the segmented image path
 
-            # Langkah 11: Deskripsi tambahan
-            description = f"Gambar Segmentasi\n" \
+            # Additional description
+            description = f"Gambar Segmentasi\n(Metode: Canny Edge Detection + Hough Transform + Gaussian Blur + Inverted)\n" \
                         f"Masking ke Gambar Asli"
             label.configure(text=description, font=("Arial", 9))
 
-            # Langkah 12: Aktifkan tombol Klasifikasi
+            # Activate the Classification button
             if classification_button:
                 segmentation_button.configure(state=tk.DISABLED)
                 classification_button.configure(state=tk.NORMAL)
-
 
     def classification_image(image_label, label, import_button):
         nonlocal segmented_image_path, selected_image_path

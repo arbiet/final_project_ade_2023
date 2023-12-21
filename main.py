@@ -1,6 +1,5 @@
 import tkinter as tk
 from pages.home import show_home
-from pages.settings import show_settings
 from pages.proses_klasifikasi import show_proses_klasifikasi
 from pages.hasil_klasifikasi import show_hasil_klasifikasi
 from pages.evaluasi_klasifikasi import show_evaluasi_klasifikasi
@@ -41,9 +40,8 @@ home_button = tk.Button(sidebar, text="Beranda", command=lambda: change_content(
 latihmodel_klasifikasi_button = tk.Button(sidebar, text="Latih Model Klasifikasi", command=lambda: change_content(content_frame, show_latihmodel_klasifikasi), width=20)
 proses_klasifikasi_button = tk.Button(sidebar, text="Proses Klasifikasi", command=lambda: change_content(content_frame, show_proses_klasifikasi), width=20)
 hasil_klasifikasi_button = tk.Button(sidebar, text="Hasil Klasifikasi", command=lambda: change_content(content_frame, show_hasil_klasifikasi), width=20)
-evaluasi_klasifikasi_button = tk.Button(sidebar, text="Evaluasi Klasifikasi", command=lambda: change_content(content_frame, show_evaluasi_klasifikasi), width=20)
 ekspor_klasifikasi_button = tk.Button(sidebar, text="Ekspor Klasifikasi", command=lambda: change_content(content_frame, show_ekspor_klasifikasi), width=20)
-settings_button = tk.Button(sidebar, text="Pengaturan", command=lambda: change_content(content_frame, show_settings), width=20)
+evaluasi_klasifikasi_button = tk.Button(sidebar, text="Evaluasi Klasifikasi", command=lambda: change_content(content_frame, show_evaluasi_klasifikasi), width=20)
 
 home_button.pack(fill="x")
 latihmodel_klasifikasi_button.pack(fill="x")
@@ -51,7 +49,6 @@ proses_klasifikasi_button.pack(fill="x")
 hasil_klasifikasi_button.pack(fill="x")
 evaluasi_klasifikasi_button.pack(fill="x")
 ekspor_klasifikasi_button.pack(fill="x")
-settings_button.pack(fill="x")
 
 # Tampilkan halaman beranda saat aplikasi pertama kali dijalankan
 show_home(content_frame)

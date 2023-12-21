@@ -9,6 +9,7 @@ from sklearn.preprocessing import StandardScaler
 import joblib
 import json
 from PIL import Image
+import re
 
 def extract_features(image_path):
     # Membaca citra menggunakan OpenCV
@@ -78,27 +79,61 @@ def train_and_export_classification_results():
     # Langkah 7: Validasi Model
     y_pred = clf.predict(X_test)
     accuracy = accuracy_score(y_test, y_pred)
-    report = classification_report(y_test, y_pred)
+    report = classification_report(y_test, y_pred, output_dict=True)
 
-    print(f"Accuracy: {accuracy}")
-    print("Classification Report:")
-    print(report)
+    # print(f"Accuracy: {accuracy}")
+    # print("Classification Report:")
+    # print(report)
 
     # Langkah 8: Optimasi Model
     param_grid = {'C': [0.1, 1, 10], 'kernel': ['linear', 'poly', 'rbf']}
     grid_search = GridSearchCV(svm.SVC(), param_grid, cv=3)
     grid_search.fit(X_train, y_train)
     best_model = grid_search.best_estimator_
-    print("Parameter terbaik setelah optimasi:", grid_search.best_params_)
+    # print("Parameter terbaik setelah optimasi:", grid_search.best_params_)
+
+    # Function to get true label from file path
+    def get_true_label(file_path):
+        # Extract the file name from the path
+        file_name = os.path.basename(file_path)
+        print(f"File name: {file_name}")
+        class_names = ["busuk", "kehijauan", "kering", "matang"]
+        # Split the file name using underscores
+        parts = file_name.split('_')
+        print(f"{parts}")
+
+        # Iterate through parts to find the label
+        for part in parts:
+            print(f"{part}")
+            if part.lower() in ["busuk", "kehijauan", "kering", "matang"]:
+                # Map the label to the index of class_names
+                label_index = class_names.index(part.lower())
+
+                # Print statements for debugging
+                print(f"File name: {file_name}")
+                print(f"Extracted true label: (Class: {part.lower()})")
+                print(f"Index of class_names: {label_index}")
+
+                return label_index
+
+        # If no label is found, return a default label
+        return -1  # Replace with the appropriate default label or handle this case as needed
+
 
     # Langkah 9: Prediksi pada Data Uji
-    new_image_paths = ["images/classification/test/kering_2.jpg", "images/classification/test/matang_6.jpg", "images/classification/test/busuk_19.jpg", "images/classification/test/kehijauan_1.jpg", "images/classification/test/matang_1.jpg", "images/classification/test/matang_3.jpg", "images/classification/test/matang_4.jpg", "images/classification/test/matang_5.jpg"]
-    new_data = []
-    dummy_true_labels = [3, 4, 1, 2, 4, 4, 4, 4]  # Sesuaikan dengan label sebenarnya citra uji
+    new_image_dir = "images/classification/test"
+    new_image_paths = [os.path.join(new_image_dir, filename) for filename in os.listdir(new_image_dir) if filename.endswith(".jpg")]
 
-    for image_path, true_label in zip(new_image_paths, dummy_true_labels):
-        new_features = extract_features(image_path)
-        new_data.append(new_features)
+    new_data = []
+    dummy_true_labels = []
+
+    for image_path in new_image_paths:
+        true_label = get_true_label(image_path)
+        
+        if true_label != -1:  # Assuming -1 is the default label when no match is found
+            dummy_true_labels.append(true_label)
+            new_features = extract_features(image_path)
+            new_data.append(new_features)
 
     # Langkah 5: Normalisasi Data pada citra uji
     new_data = scaler.transform(new_data)
@@ -112,25 +147,30 @@ def train_and_export_classification_results():
     # Evaluasi hasil prediksi menggunakan metrik evaluasi yang sesuai
     y_pred_test = best_model.predict(X_test)
     accuracy_test = accuracy_score(y_test, y_pred_test)
-    report_test = classification_report(y_test, y_pred_test)
+    report_test = classification_report(y_test, y_pred_test, output_dict=True)
+
+    # Convert the NumPy array to a nested list
+    serializable_results = predictions.tolist()
+    
 
     # Simpan hasil klasifikasi dalam bentuk JSON
     classification_results = {
         "accuracy": accuracy,
         "classification_report": report,
         "best_model_parameters": grid_search.best_params_,
-        "predictions": list(predictions),
+        "predictions": serializable_results,
         "true_labels": dummy_true_labels,
         "test_accuracy": accuracy_test,
         "test_classification_report": report_test
     }
 
     # Convert NumPy arrays to lists for JSON serialization
-    print(classification_results["predictions"])
+    # classification_results["predictions"] = classification_results["predictions"].astype(int).tolist()
+    # print(classification_results["predictions"])
 
     # Save classification results to JSON
-    # with open("classification_results.json", "w") as json_file:
-        # json.dump(classification_results, json_file)
+    with open("classification_results.json", "w") as json_file:
+        json.dump(classification_results, json_file)
 
     print("Hasil klasifikasi disimpan dalam file classification_results.json")
 

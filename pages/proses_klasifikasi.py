@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import filedialog
 from tkinter import ttk
+from tkinter import messagebox
 import cv2
 import numpy as np
 import joblib
@@ -168,8 +169,12 @@ def save_image_to_folder(image_path, prediction):
     destination_folder_test = os.path.join(destination_folder_test, new_file_name)
 
     # Copy the image to the destination folder
-    shutil.copy(image_path, destination_path)
-    shutil.copy(image_path, destination_folder_test)
+    try:
+        shutil.copy(image_path, destination_path)
+        shutil.copy(image_path, destination_folder_test)
+        messagebox.showinfo("Image Saved", f"Image saved to: {destination_path}")
+    except Exception as e:
+        messagebox.showerror("Error", f"Error saving image: {str(e)}")
 
     print(f"Image saved to: {destination_path}")
 

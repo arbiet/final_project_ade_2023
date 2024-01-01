@@ -92,6 +92,18 @@ def train_and_export_classification_results():
     best_model = grid_search.best_estimator_
     # print("Parameter terbaik setelah optimasi:", grid_search.best_params_)
 
+    # Dapatkan parameter optimal w* dan b*
+    if best_model.kernel == 'linear':
+        best_w = best_model.coef_.ravel()
+    else:
+        # Jika kernel bukan linear, hitung magnitude vektor bobot
+        support_vectors = best_model.support_vectors_
+        dual_coefs = best_model.dual_coef_
+        best_w = np.dot(dual_coefs, support_vectors)
+
+    # Hitung magnitude vektor bobot
+    magnitude_w = np.linalg.norm(best_w)
+
     # Function to get true label from file path
     def get_true_label(file_path):
         # Extract the file name from the path
@@ -152,12 +164,17 @@ def train_and_export_classification_results():
     # Convert the NumPy array to a nested list
     serializable_results = predictions.tolist()
     
-
     # Simpan hasil klasifikasi dalam bentuk JSON
     classification_results = {
         "accuracy": accuracy,
         "classification_report": report,
-        "best_model_parameters": grid_search.best_params_,
+        "best_model_parameters": {
+            "C": best_model.C,
+            "kernel": best_model.kernel,
+            "magnitude_w": magnitude_w,  # Menambahkan magnitude vektor bobot
+            "b_star": best_model.intercept_.tolist(),
+            "w_star": best_w.tolist()
+        },
         "predictions": serializable_results,
         "true_labels": dummy_true_labels,
         "test_accuracy": accuracy_test,

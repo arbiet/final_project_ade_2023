@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 from sklearn import svm
 from sklearn.model_selection import train_test_split, GridSearchCV
-from sklearn.metrics import accuracy_score, classification_report, f1_score
+from sklearn.metrics import accuracy_score, classification_report, f1_score, multilabel_confusion_matrix
 from sklearn.preprocessing import StandardScaler
 import joblib
 import json
@@ -81,6 +81,9 @@ def train_and_export_classification_results():
     accuracy = accuracy_score(y_test, y_pred)
     report = classification_report(y_test, y_pred, output_dict=True)
 
+    # Menggunakan multilabel_confusion_matrix untuk mendapatkan confusion matrix untuk setiap kelas
+    conf_matrix_per_class = multilabel_confusion_matrix(y_test, y_pred)
+
     # print(f"Accuracy: {accuracy}")
     # print("Classification Report:")
     # print(report)
@@ -103,6 +106,9 @@ def train_and_export_classification_results():
 
     # Hitung magnitude vektor bobot
     magnitude_w = np.linalg.norm(best_w)
+
+    # Dapatkan parameter hasil tuning
+    best_params_tuned = grid_search.best_params_
 
     # Function to get true label from file path
     def get_true_label(file_path):
@@ -168,6 +174,15 @@ def train_and_export_classification_results():
     classification_results = {
         "accuracy": accuracy,
         "classification_report": report,
+        "confusion_matrix_per_class": [
+            {"class": i,
+            "confusion_matrix": conf_matrix.tolist(),
+            "true_positive": int(conf_matrix[1, 1]),
+            "false_positive": int(conf_matrix[0, 1]),
+            "false_negative": int(conf_matrix[1, 0]),
+            "true_negative": int(conf_matrix[0, 0])}
+            for i, conf_matrix in enumerate(conf_matrix_per_class)
+        ],
         "best_model_parameters": {
             "C": best_model.C,
             "kernel": best_model.kernel,
@@ -175,6 +190,7 @@ def train_and_export_classification_results():
             "b_star": best_model.intercept_.tolist(),
             "w_star": best_w.tolist()
         },
+        "best_tuning_parameters": best_params_tuned,
         "predictions": serializable_results,
         "true_labels": dummy_true_labels,
         "test_accuracy": accuracy_test,

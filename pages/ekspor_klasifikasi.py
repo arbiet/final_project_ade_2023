@@ -166,6 +166,8 @@ def train_and_export_classification_results():
     y_pred_test = best_model.predict(X_test)
     accuracy_test = accuracy_score(y_test, y_pred_test)
     report_test = classification_report(y_test, y_pred_test, output_dict=True)
+    # Menggunakan multilabel_confusion_matrix untuk mendapatkan confusion matrix untuk setiap kelas
+    conf_matrix_per_class_test = multilabel_confusion_matrix(y_test, y_pred_test)
 
     # Convert the NumPy array to a nested list
     serializable_results = predictions.tolist()
@@ -194,7 +196,16 @@ def train_and_export_classification_results():
         "predictions": serializable_results,
         "true_labels": dummy_true_labels,
         "test_accuracy": accuracy_test,
-        "test_classification_report": report_test
+        "test_classification_report": report_test,
+        "test_confusion_matrix_per_class": [
+            {"class": i,
+            "confusion_matrix": conf_matrix.tolist(),
+            "true_positive": int(conf_matrix[1, 1]),
+            "false_positive": int(conf_matrix[0, 1]),
+            "false_negative": int(conf_matrix[1, 0]),
+            "true_negative": int(conf_matrix[0, 0])}
+            for i, conf_matrix in enumerate(conf_matrix_per_class_test)
+        ],
     }
 
     # Convert NumPy arrays to lists for JSON serialization

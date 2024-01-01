@@ -1,6 +1,14 @@
 import tkinter as tk
 import json
 
+# Mapping of class labels to their meanings
+class_label_mapping = {
+    '0': 'Busuk',
+    '1': 'Kehijauan',
+    '2': 'Kering',
+    '3': 'Matang',
+}
+
 def show_evaluasi_klasifikasi(content_frame):
     label = tk.Label(content_frame, text="Halaman Evaluasi Klasifikasi", font=("Arial", 24))
     label.pack()
@@ -35,7 +43,8 @@ def show_evaluasi_klasifikasi(content_frame):
 
     for class_label, metrics in results['classification_report'].items():
         if class_label.isdigit():  # Check if the key is a digit (to avoid 'accuracy', 'macro avg', 'weighted avg', etc.)
-            metrics_str = f"Class {class_label}: Precision={metrics['precision']}, Recall={metrics['recall']}, F1-score={metrics['f1-score']}, Support={metrics['support']}"
+            class_name = class_label_mapping.get(class_label, 'Unknown')
+            metrics_str = f"Class {class_label} ({class_name}): Precision={metrics['precision']}, Recall={metrics['recall']}, F1-score={metrics['f1-score']}, Support={metrics['support']}"
             class_label = tk.Label(content_frame, text=metrics_str)
             class_label.pack()
 
@@ -55,7 +64,8 @@ def show_evaluasi_klasifikasi(content_frame):
 
     for class_label, metrics in results['test_classification_report'].items():
         if class_label.isdigit():
-            metrics_str = f"Class {class_label}: Precision={metrics['precision']}, Recall={metrics['recall']}, F1-score={metrics['f1-score']}, Support={metrics['support']}"
+            class_name = class_label_mapping.get(class_label, 'Unknown')
+            metrics_str = f"Class {class_label} ({class_name}): Precision={metrics['precision']}, Recall={metrics['recall']}, F1-score={metrics['f1-score']}, Support={metrics['support']}"
             class_label = tk.Label(content_frame, text=metrics_str)
             class_label.pack()
 

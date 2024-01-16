@@ -80,6 +80,7 @@ def classify_image(image_path, label_result, panel, delete_button, edges_panel):
     # Predict the class label using the trained model
     prediction = model.predict(features)[0]
 
+
     # Display the result in the label
     label_result.config(text=f"Klasifikasi Gambar: {get_class_name(prediction)}")
 
@@ -140,6 +141,52 @@ def classify_image(image_path, label_result, panel, delete_button, edges_panel):
         label_result.config(
             text=label_result.cget("text") +
             f"\nImage not saved. Accuracy below threshold (0.75)."
+        )
+
+    # Retrieve SVM model information
+    if hasattr(model, 'support_vectors_') and hasattr(model, 'dual_coef_'):
+        # Support Vectors
+        support_vectors = model.support_vectors_
+        # label_result.config(
+        #     text=label_result.cget("text") +
+        #     f"\n\nSupport Vectors:\n{support_vectors}"
+        # )
+
+        # Hyperplane
+        w = model.coef_
+        b = model.intercept_
+        hyperplane = (features.dot(w.T) + b)[0]
+        label_result.config(
+            text=label_result.cget("text") +
+            f"\n\nHyperplane:\nHyperplane adalah garis pemisah antara dua kelas dalam model ini. \n"
+            f"Ia dibentuk oleh kombinasi bobot (w) dan bias (b) dari model SVM. \n"
+            f"Jika suatu titik berada di atas Hyperplane, itu mungkin termasuk dalam satu kelas, \n"
+            f"dan jika di bawahnya, mungkin termasuk dalam kelas lain. Hyperplane untuk gambar ini adalah: {hyperplane}\n"
+        )
+
+        # Decision Scores
+        decision_scores = model.decision_function(features)
+        label_result.config(
+            text=label_result.cget("text") +
+            f"\n\nDecision Scores:\nDecision Scores mengukur seberapa dekat suatu sampel data dengan Hyperplane. \n"
+            f"Semakin tinggi nilainya, semakin yakin model bahwa sampel data termasuk dalam kelas tertentu. \n"
+            f"Sebaliknya, nilai negatif menunjukkan kecenderungan sampel data masuk ke dalam kelas lain. \n"
+            f"Untuk gambar ini, Decision Scores-nya adalah: {decision_scores}\n"
+        )
+
+        # Menampilkan nilai w dan b
+        limited_w = w.flatten()[:5]  # Mengambil lima elemen pertama dari vektor bobot
+        label_result.config(
+            text=label_result.cget("text") +
+            f"\nBobot (w) (lima elemen pertama):\n{limited_w}\n"
+            f"Bias (b):\n{b}\n"
+        )
+
+    # Display kernel function (if available)
+    if hasattr(model, 'kernel'):
+        label_result.config(
+            text=label_result.cget("text") +
+            f"\n\nKernel Function: {model.kernel}"
         )
 
 def save_image_to_folder(image_path, prediction):
@@ -228,7 +275,7 @@ def show_proses_klasifikasi(content_frame):
     label.pack(pady=20)
     
     # Label to display the classification result
-    label_result = tk.Label(content_frame, text="", font=("Arial", 16))
+    label_result = tk.Label(content_frame, text="", font=("Arial", 12))
     label_result.pack(pady=10)
 
     # Frame to hold the image panels

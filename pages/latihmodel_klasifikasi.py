@@ -107,7 +107,8 @@ def train_svm_model(progress_var, label_result):
 
     # Langkah 8: Optimasi Model
     # Contoh optimasi dengan Grid Search untuk mencari parameter terbaik
-    param_grid = {'C': [0.1, 1, 10], 'kernel': ['linear', 'poly', 'rbf']}
+    param_grid = {'C': [0.1, 1, 10], 'kernel': ['linear']}
+
     grid_search = GridSearchCV(svm.SVC(), param_grid, cv=3)
     grid_search.fit(X_train, y_train)
 

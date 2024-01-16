@@ -89,7 +89,7 @@ def train_and_export_classification_results():
     # print(report)
 
     # Langkah 8: Optimasi Model
-    param_grid = {'C': [0.1, 1, 10], 'kernel': ['linear', 'poly', 'rbf']}
+    param_grid = {'C': [0.1, 1, 10], 'kernel': ['linear']}
     grid_search = GridSearchCV(svm.SVC(), param_grid, cv=3)
     grid_search.fit(X_train, y_train)
     best_model = grid_search.best_estimator_

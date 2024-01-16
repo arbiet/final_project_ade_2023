@@ -110,6 +110,17 @@ def train_and_export_classification_results():
     # Dapatkan parameter hasil tuning
     best_params_tuned = grid_search.best_params_
 
+    # Langkah 9: Support Vectors
+    support_vectors = best_model.support_vectors_.tolist()
+
+    # Langkah 10: Decision Function Scores
+    decision_scores = best_model.decision_function(X_test).tolist()
+
+    # Langkah 11: Hyperplane Coefficients
+    hyperplane_coefficients = best_w.tolist()
+
+    
+
     # Function to get true label from file path
     def get_true_label(file_path):
         # Extract the file name from the path
@@ -207,6 +218,15 @@ def train_and_export_classification_results():
             for i, conf_matrix in enumerate(conf_matrix_per_class_test)
         ],
     }
+    # Langkah 12: Tambahkan Informasi ke JSON
+    classification_results["support_vectors"] = support_vectors
+    classification_results["decision_scores"] = decision_scores
+    classification_results["hyperplane_coefficients"] = hyperplane_coefficients
+    # Langkah 10: Decision Scores dari Gambar Test
+    decision_scores_test = best_model.decision_function(new_data).tolist()
+
+    # Langkah 11: Tambahkan Informasi ke JSON
+    classification_results["decision_scores_test"] = decision_scores_test
 
     # Convert NumPy arrays to lists for JSON serialization
     # classification_results["predictions"] = classification_results["predictions"].astype(int).tolist()
